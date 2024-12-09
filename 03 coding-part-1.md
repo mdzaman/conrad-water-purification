@@ -111,105 +111,248 @@ app.listen(3000, () => console.log('Server running on port 3000'));
 
 ```tsx
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Elements } from '@stripe/stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
-
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ShoppingCart, User, Home } from 'lucide-react';
 
 const App = () => {
+  const [currentPage, setCurrentPage] = useState('home');
   const [cart, setCart] = useState([]);
+  const [showCart, setShowCart] = useState(false);
+
+  const renderPage = () => {
+    switch(currentPage) {
+      case 'products':
+        return <ProductList cart={cart} setCart={setCart} />;
+      case 'checkout':
+        return <Checkout cart={cart} />;
+      default:
+        return <HomePage />;
+    }
+  };
 
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-            <h1 className="text-xl font-bold">Water Purification Systems</h1>
-            <div className="flex items-center space-x-4">
-              <CartIcon items={cart.length} />
-              <UserMenu />
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center space-x-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => setCurrentPage('home')}
+            >
+              <Home className="h-5 w-5 mr-2" />
+              Water Purification Systems
+            </Button>
           </div>
-        </nav>
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowCart(!showCart)}
+            >
+              <ShoppingCart className="h-5 w-5 mr-2" />
+              {cart.length > 0 && (
+                <span className="bg-blue-600 text-white rounded-full px-2 py-1 text-xs">
+                  {cart.length}
+                </span>
+              )}
+            </Button>
+            <Button variant="ghost">
+              <User className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </nav>
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/products" element={<ProductList />} />
-            <Route path="/cart" element={<Cart cart={cart} setCart={setCart} />} />
-            <Route
-              path="/checkout"
-              element={
-                <Elements stripe={stripePromise}>
-                  <Checkout cart={cart} />
-                </Elements>
-              }
-            />
-          </Routes>
-        </main>
-      </div>
-    </BrowserRouter>
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {renderPage()}
+      </main>
+
+      <CartDialog 
+        open={showCart} 
+        onClose={() => setShowCart(false)}
+        cart={cart}
+        setCart={setCart}
+        onCheckout={() => {
+          setCurrentPage('checkout');
+          setShowCart(false);
+        }}
+      />
+    </div>
   );
 };
 
-const ProductList = () => {
-  const [products, setProducts] = useState([]);
+const HomePage = () => (
+  <div className="space-y-6">
+    <Card>
+      <CardHeader>
+        <CardTitle>Welcome to Water Purification Systems</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-gray-600">Discover our advanced water purification solutions.</p>
+      </CardContent>
+    </Card>
+  </div>
+);
+
+const ProductList = ({ cart, setCart }) => {
+  const [products] = useState([
+    {
+      id: 1,
+      name: "Advanced Water Purifier",
+      description: "State-of-the-art water purification system",
+      price: 299.99,
+      image: "/api/placeholder/400/300"
+    },
+    {
+      id: 2,
+      name: "Microplastic Filter",
+      description: "Specialized filter for microplastic removal",
+      price: 149.99,
+      image: "/api/placeholder/400/300"
+    }
+  ]);
+
+  const addToCart = (product) => {
+    setCart([...cart, product]);
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {products.map(product => (
-        <div key={product._id} className="bg-white rounded-lg shadow p-6">
-          <img
-            src={product.images[0]}
-            alt={product.name}
-            className="w-full h-48 object-cover rounded"
-          />
-          <h2 className="mt-4 text-lg font-semibold">{product.name}</h2>
-          <p className="mt-2 text-gray-600">{product.description}</p>
-          <div className="mt-4 flex justify-between items-center">
-            <span className="text-xl font-bold">${product.price}</span>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded">
-              Add to Cart
-            </button>
-          </div>
-        </div>
+        <Card key={product.id}>
+          <CardContent className="p-6">
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-48 object-cover rounded mb-4"
+            />
+            <h2 className="text-lg font-semibold">{product.name}</h2>
+            <p className="mt-2 text-gray-600">{product.description}</p>
+            <div className="mt-4 flex justify-between items-center">
+              <span className="text-xl font-bold">${product.price}</span>
+              <Button onClick={() => addToCart(product)}>
+                Add to Cart
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );
 };
 
+const CartDialog = ({ open, onClose, cart, setCart, onCheckout }) => {
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
+
+  return (
+    <AlertDialog open={open} onOpenChange={onClose}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Shopping Cart</AlertDialogTitle>
+          <AlertDialogDescription>
+            {cart.length === 0 ? (
+              <p>Your cart is empty</p>
+            ) : (
+              <div className="space-y-4">
+                {cart.map((item, index) => (
+                  <div key={index} className="flex justify-between items-center">
+                    <span>{item.name}</span>
+                    <span>${item.price}</span>
+                  </div>
+                ))}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between font-bold">
+                    <span>Total:</span>
+                    <span>${total.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={onClose}>Close</AlertDialogAction>
+          {cart.length > 0 && (
+            <Button onClick={onCheckout} className="ml-2">
+              Checkout
+            </Button>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
 const Checkout = ({ cart }) => {
-  const stripe = useStripe();
-  const elements = useElements();
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    address: '',
+  });
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    const { error, paymentMethod } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: elements.getElement('card')
-    });
-
-    if (!error) {
-      // Handle successful payment
-    }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Handle payment submission to backend
+    console.log('Processing payment:', { formData, cart });
   };
 
   return (
-    <div className="max-w-lg mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Payment Information</h2>
-          <CardElement className="p-4 border rounded" />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-3 rounded-lg"
-        >
-          Pay Now
-        </button>
-      </form>
-    </div>
+    <Card className="max-w-lg mx-auto">
+      <CardHeader>
+        <CardTitle>Checkout</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Name</label>
+            <Input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Address</label>
+            <Input
+              type="text"
+              value={formData.address}
+              onChange={(e) => setFormData({...formData, address: e.target.value})}
+              required
+            />
+          </div>
+          <div className="pt-4 border-t">
+            <div className="flex justify-between font-bold mb-4">
+              <span>Total:</span>
+              <span>${total.toFixed(2)}</span>
+            </div>
+            <Button type="submit" className="w-full">
+              Complete Purchase
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 
